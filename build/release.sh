@@ -5,14 +5,15 @@ source config
 
 apt update
 apt install -y qemu-user-static
+apt install -y gdisk
 
 if [[ "$IMAGE_URL" == /* ]]; then
 	cp $IMAGE_URL .
 else
-	wget -q "$IMAGE_URL"
+	wget -q "$IMAGE_URL" --show-progress
 fi
 IMAGE=$(basename "$IMAGE_URL" .xz)
-unxz -T0 ${IMAGE}.xz
+unxz -v -T0 ${IMAGE}.xz
 
 # expand disk size
 truncate -s 16G $IMAGE
