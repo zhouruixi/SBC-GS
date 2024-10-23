@@ -1,7 +1,6 @@
 #!/bin/bash
 
 set -e
-set -x
 echo_red()   { printf "\033[1;31m$*\033[m\n"; }
 echo_green() { printf "\033[1;32m$*\033[m\n"; }
 echo_blue()  { printf "\033[1;34m$*\033[m\n"; }
@@ -89,6 +88,7 @@ truncate -s ${diskNewSize}G $IMAGE
 LOOPDEV=$(losetup -P --show -f $IMAGE)
 ROOT_PART=$(sgdisk -p $LOOPDEV | grep "rootfs" | tail -n 1 | tr -s ' ' | cut -d ' ' -f 2)
 ROOT_DEV=${LOOPDEV}p${ROOT_PART}
+echo_blue $LOOPDEV
 
 # move second/backup GPT header to end of disk
 sgdisk -ge $LOOPDEV
@@ -104,8 +104,10 @@ e2fsck -yf $ROOT_DEV
 resize2fs $ROOT_DEV
 
 # mount rootfs and config
+echo_blue "Mount rootfs and config"
 [ -d $ROOTFS ] || mkdir $ROOTFS
 mount $ROOT_DEV $ROOTFS
+[ -d $ROOTFS/config ] || mkdir $ROOTFS/config
 mount ${LOOPDEV}p1 $ROOTFS/config
 mount -t proc /proc $ROOTFS/proc
 mount -t sysfs /sys $ROOTFS/sys
@@ -113,17 +115,22 @@ mount -o bind /dev $ROOTFS/dev
 mount -o bind /run $ROOTFS/run
 mount -t devpts devpts $ROOTFS/dev/pts
 
+BOARD=$(cat $ROOTFS/etc/hostname)
+exit
 # copy gs code to target rootfs
+echo_blue "Сopy gs code to target rootfs"
 mkdir -p $ROOTFS/home/radxa/SourceCode/SBC-GS
 cp -r ../gs ../pics $ROOTFS/home/radxa/SourceCode/SBC-GS
 
 # run build script
 # chroot $ROOTFS /bin/bash
+echo_blue "Run build script\nchroot $ROOTFS /bin/bash"
 cp build.sh $ROOTFS/root/build.sh
 chroot $ROOTFS /root/build.sh
 rm $ROOTFS/root/build.sh
 
 # add release info
+echo_blue "Add release info"
 BUILD_DATE=$(date "+%Y-%m-%d")
 BUILD_DATETIME=$(date "+%Y-%m-%d %H:%M:%S")
 echo "BUILD_DATETIME=\"${BUILD_DATETIME}\"" >> $ROOTFS/etc/gs-release
@@ -145,6 +152,7 @@ umount -R $ROOTFS
 rm -r $ROOTFS
 
 # shrink image
+echo_blue "Shrink image"
 SECTOR_SIZE=$(sgdisk -p $ROOT_DEV | grep -oP "(?<=: )\d+(?=/)")
 START_SECTOR=$(sgdisk -i $ROOT_PART $LOOPDEV | grep "First sector:" | cut -d ' ' -f 3)
 TOTAL_BLOCKS=$(tune2fs -l $ROOT_DEV | grep '^Block count:' | tr -s ' ' | cut -d ' ' -f 3)
@@ -168,10 +176,14 @@ truncate --size=$FINAL_SIZE $IMAGE > /dev/null
 sgdisk -ge $IMAGE > /dev/null
 sgdisk -v $IMAGE > /dev/null
 
-echo "Image shrunked from ${TOTAL_BLOCKS} to ${TOTAL_BLOCKS_SHRINKED}."
+echo "Image shrunked from ${TOTAL_BLOCKS} to ${TOTAL_BLOCKS_SHRINKED}." 
 
 # compression image and rename xz file
-xz -v -T0 $IMAGE
-mv *.xz Radxa-Zero-3_GroundStation_${BUILD_DATE}_${VERSION}.img.xz
+NEW_NAME="openipc_sbcgc_${BOARD}_${BUILD_DATE}_${VERSION}.img"
+echo_blue "Compression image and rename xz file $NEW_NAME"
+mv $IMAGE $NEW_NAME
+xz -T0 $NEW_NAME
+
+echo_green "Finish"
 
 exit 0
