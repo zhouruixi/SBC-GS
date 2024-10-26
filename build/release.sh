@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -e
+set -e -x
 echo_red()   { printf "\033[1;31m$*\033[m\n"; }
 echo_green() { printf "\033[1;32m$*\033[m\n"; }
 echo_blue()  { printf "\033[1;34m$*\033[m\n"; }
@@ -81,12 +81,15 @@ if [ -n "$losetupList" ]; then
 		losetup -d $(echo $line | cut -d ' ' -f 1)
 	done < <(printf '%s\n' "$losetupList")
 fi
+echo_blue "Create a disk partition config"
+./add_config_disk.sh $IMAGE
 
 # expand disk size
 truncate -s ${diskNewSize}G $IMAGE
 
 LOOPDEV=$(losetup -P --show -f $IMAGE)
 ROOT_PART=$(sgdisk -p $LOOPDEV | grep "rootfs" | tail -n 1 | tr -s ' ' | cut -d ' ' -f 2)
+CONFIG_PART=$(sgdisk -p $LOOPDEV | grep "config" | tail -n 1 | tr -s ' ' | cut -d ' ' -f 2)
 ROOT_DEV=${LOOPDEV}p${ROOT_PART}
 echo_blue $LOOPDEV
 
@@ -108,7 +111,7 @@ echo_blue "Mount rootfs and config"
 [ -d $ROOTFS ] || mkdir $ROOTFS
 mount $ROOT_DEV $ROOTFS
 [ -d $ROOTFS/config ] || mkdir $ROOTFS/config
-mount ${LOOPDEV}p1 $ROOTFS/config
+mount ${LOOPDEV}p${CONFIG_PART} $ROOTFS/config
 mount -t proc /proc $ROOTFS/proc
 mount -t sysfs /sys $ROOTFS/sys
 mount -o bind /dev $ROOTFS/dev
@@ -116,7 +119,7 @@ mount -o bind /run $ROOTFS/run
 mount -t devpts devpts $ROOTFS/dev/pts
 
 BOARD=$(cat $ROOTFS/etc/hostname)
-exit
+
 # copy gs code to target rootfs
 echo_blue "Сopy gs code to target rootfs"
 mkdir -p $ROOTFS/home/radxa/SourceCode/SBC-GS
