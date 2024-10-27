@@ -1,9 +1,7 @@
 #!/bin/bash
 
 set -e
-
-# run init script on first boot
-[ -f /config/before.txt ] && /home/radxa/gs/init.sh
+set -x
 
 # load config
 source /config/gs.conf

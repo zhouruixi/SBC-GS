@@ -41,7 +41,8 @@ GS Directory Tree
 /
 ├── boot
 │   └── dtbo
-│       └── rk3566-dwc3-otg-role-switch.dtbo
+│       ├── rk3566-dwc3-otg-role-switch.dtbo
+│       └── rk3566-hdmi-max-resolution-4k.dtbo
 ├── config
 │   ├── gs.conf
 │   └── gs.key
@@ -53,6 +54,8 @@ GS Directory Tree
 │   │   └── interfaces.d
 │   │       └── radxa0
 │   ├── NetworkManager
+│   │   ├── conf.d
+│   │   │   └── 00-gs-unmanaged.conf
 │   │   └── system-connections
 │   │       ├── hotspot.nmconnection
 │   │       └── wlan0.nmconnection
@@ -65,8 +68,10 @@ GS Directory Tree
 │   │   │   ├── eth0.network
 │   │   │   └── usb0.network
 │   │   └── system
+│   │       ├── gs-init.service
 │   │       ├── gs.service
 │   │       └── multi-user.target.wants
+│   │           ├── gs-ini.service -> /etc/systemd/system/gs-ini.service
 │   │           └── gs.service -> /etc/systemd/system/gs.service
 │   └── udev
 │       └── rules.d
@@ -77,9 +82,11 @@ GS Directory Tree
         ├── gs
         │   ├── button.sh
         │   ├── fan.sh
+        │   ├── gs-init.service
+        │   ├── gs-init.sh
         │   ├── gs.sh
-        │   ├── init.sh
         │   ├── rk3566-dwc3-otg-role-switch.dts
+        │   ├── rk3566-hdmi-max-resolution-4k.dts
         │   ├── stream.sh
         │   └── wfb.sh
         └── Videos

@@ -1,6 +1,7 @@
 #!/bin/bash
 
 set -e
+set -x
 source /config/gs.conf
 
 sleep 12
@@ -81,6 +82,20 @@ Name=usb0
 Bridge=br0
 EOF
 
+[ -f /etc/systemd/network/dummy0.netdev ] || cat > /etc/systemd/network/dummy0.netdev << EOF
+[NetDev]
+Name=dummy0
+Kind=dummy
+EOF
+
+[ -f /etc/systemd/network/dummy0.network ] || cat > /etc/systemd/network/dummy0.network << EOF
+[Match]
+Name=dummy0
+
+[Network]
+Bridge=br0
+EOF
+
 # Add radxa0 usb gadget network configuration
 echo "start configure radxa0 usb gadget network"
 gadget_net_fixed_ip_addr=${gadget_net_fixed_ip%/*}
@@ -143,8 +158,8 @@ server_address = '${eth0_fixed_ip%/*}'
 
 EOF
 
+systemctl disable gs-init.service
 
-while [ -f /config/before.txt ]; do sleep 1; done
+while [ -f /config/before.txt ]; do sleep 2; done
 sync
-sleep 1 && reboot &
-exit 1
+reboot
