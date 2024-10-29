@@ -171,8 +171,9 @@ resizepart $ROOT_PART
 ${NEW_SIZE}B
 yes
 EOF
+FIRST_LBA=$(sfdisk -d $LOOPDEV | grep 'first-lba:' | tr -d ' ' | cut -d ':' -f 2)
 END_SECTOR=$(sgdisk -i $ROOT_PART $LOOPDEV | grep "Last sector:" | cut -d ' ' -f 3)
-FINAL_SIZE=$(( ($END_SECTOR + 34) * $SECTOR_SIZE ))
+FINAL_SIZE=$(( ($END_SECTOR + $FIRST_LBA) * $SECTOR_SIZE ))
 
 losetup -d $LOOPDEV
 truncate --size=$FINAL_SIZE $IMAGE > /dev/null

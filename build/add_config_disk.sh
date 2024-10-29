@@ -1,12 +1,10 @@
 #!/bin/bash
 
-set -e -x
+set -e
 
 # Size, MB
 SIZE_DISK=16
-SIZE_SECTORS="$(($SIZE_DISK*2048))"
 TMP_DISK="newImage.img"
-FIRST_SECTOR=32768 # The number must be a multiple of 2048. Minimum=2048
 
 # Protection against duplicate creation
 if $(sgdisk -p $1 | grep -q config);then
@@ -22,20 +20,21 @@ if [ $diskFreeSpace -lt $(($fileSize*2)) ];then
 	exit 1
 fi
 
-
 # Getting the current disk layout
 sfdisk_output=$(sfdisk -d $1)
 label=$(echo "$sfdisk_output" | grep 'label:' | tr -d ' ' | cut -d ':' -f 2)
 label_id=$(echo "$sfdisk_output" | grep 'label-id:' | tr -d ' ' | cut -d ':' -f 2)
 device=$(echo "$sfdisk_output" | grep 'device:' | tr -d ' ' | cut -d ':' -f 2)
 unit=$(echo "$sfdisk_output" | grep 'unit:' | tr -d ' ' | cut -d ':' -f 2)
-first_lba=34 #$(echo "$sfdisk_output" | grep 'first-lba:' | tr -d ' ' | cut -d ':' -f 2)
+first_lba=$(echo "$sfdisk_output" | grep 'first-lba:' | tr -d ' ' | cut -d ':' -f 2)
 last_lba=$(echo "$sfdisk_output" | grep 'last-lba:' | tr -d ' ' | cut -d ':' -f 2)
 sector_size=$(echo "$sfdisk_output" | grep 'sector-size:' | tr -d ' ' | cut -d ':' -f 2)
 partedList="$(echo "$sfdisk_output" | grep $device.)"
-start_sector=$(echo $partedList | gawk '{if ( match ( $0, /start=\W*([0-9]*)(.*)/, a ) ) print a[1] }')
-SEEK_SECTOR=$(($start_sector-($FIRST_SECTOR+$SIZE_SECTORS)))
-FULL_LBA=$(($last_lba-($SEEK_SECTOR)))
+start_sector=$(echo $partedList | gawk '{if ( match ( $0, /start=\W*([0-9]*)(.*)/, a ) ) print a[1] }') 
+gptReserveSizeSector=$((($(du -b "$1" | awk '{print $1}')/$sector_size - $last_lba)))
+mbToSector=$((1024*1024/$sector_size)) # How many sectors in a megabyte
+size_disk_sectors="$(($SIZE_DISK*$mbToSector))"
+full_lba=$(($last_lba+$size_disk_sectors))
 
 # Create a new disk with an indent of SIZE_DISK
 if [ -f ${TMP_DISK} ];then 
@@ -45,15 +44,31 @@ fi
 
 echo "Create a new disk"
 
-SKIP=$(($start_sector/2048)) # We do not read empty blocks at the beginning of the img image
-SEEK=$((FIRST_SECTOR/2048+$SIZE_DISK)) # Skip a FIRST_SECTOR+$SIZE_DISK
-dd if=$1 of=$TMP_DISK bs=1M seek=$SEEK skip=$SKIP status=progress
-dd if=/dev/zero of=$TMP_DISK bs=512 count=$(($first_lba-34)) seek=$(($(du -b "$TMP_DISK" | awk '{print $1}')/512)) # Increases the end of the disk to the size of first-lba
-SIZE_IMG=$(($(du -b "$TMP_DISK" | awk '{print $1}')/512))
+# Копируем сектора с загрузчиками
+skip_mb=$(($start_sector/$mbToSector)) # We do not read empty blocks at the beginning of the img image, in MB
+dd if=$1 of=$TMP_DISK bs=1M count=$skip_mb
 
-r34=$(($SIZE_IMG - $FULL_LBA))
-if [ $r34 -ne $first_lba ];then
-	echo "Error: The size of the new img image is out of bounds by $(($r34-$first_lba)) bytes"
+# Добавить 16М + образ
+seek_mb=$(($skip_mb + $SIZE_DISK)) # Seek +16М
+dd if=$1 of=$TMP_DISK bs=1M skip=$skip_mb seek=$seek_mb status=progress
+
+# Добавить в конец длинну, равную first_lba (нужно для sgdisk -ge)
+size_img=$(($(du -b "$TMP_DISK" | awk '{print $1}')/$sector_size))
+r34=$(($size_img - $full_lba))
+if [ $r34 -ne $gptReserveSizeSector ];then
+	echo "Error: The size of the new image is out of bounds by $(($r34-$gptReserveSizeSector)) bytes"
+	exit 1
+fi
+
+if [ $gptReserveSizeSector -le $first_lba ];then
+	# Increases the end of the disk to the size of first-lba
+	dd if=/dev/zero of=$TMP_DISK bs=$sector_size count=$(($first_lba-$gptReserveSizeSector)) seek=$(($(du -b "$TMP_DISK" | awk '{print $1}')/512)) 
+fi
+
+size_img=$(($(du -b "$TMP_DISK" | awk '{print $1}')/$sector_size))
+r34=$(($size_img - $full_lba))
+if [ $r34 -gt $first_lba ];then
+	echo "Error: GPT backup partition extends beyond first-lba by $(($r34-$first_lba)) bytes"
 	exit 1
 fi
 
@@ -65,9 +80,10 @@ fi
 # Recalculates indents of existing volumes
 i=2
 new_partition=""
+seek_sector=$(($seek_mb*$mbToSector)) # Seek sector
 while IFS= read -r line
 do
-  new_partition="${new_partition}NewPartition${i} $(echo $line | gawk '{if ( match ( $0, /(.*)(:.*start=)\W*([0-9]*)(.*)/, a ) ) print a[2]a[3]-('$SEEK_SECTOR')a[4]}' )"$'\n'
+  new_partition="${new_partition}NewPartition${i} $(echo $line | gawk '{if ( match ( $0, /(.*)(:.*start=)\W*([0-9]*)(.*)/, a ) ) print a[2]a[3]+('$size_disk_sectors')a[4]}' )"$'\n'
   i=$(($i+1))
 done < <(printf '%s\n' "$partedList")
 
@@ -78,20 +94,44 @@ label-id: ${label_id}
 device: NewPartition
 unit: ${unit}
 first-lba: ${first_lba}
-last-lba: ${FULL_LBA}
+last-lba: ${full_lba}
 sector-size: ${sector_size}
 
-NewPartition1 : start=$FIRST_SECTOR, size=$SIZE_SECTORS, type=EBD0A0A2-B9E5-4433-87C0-68B6B72699C7, name="config"
+NewPartition1 : start=$start_sector, size=$size_disk_sectors, type=EBD0A0A2-B9E5-4433-87C0-68B6B72699C7, name="config"
 ${new_partition}
 EOF
+
+# bootdisk flag
+sgdisk -A 2:set:2 $TMP_DISK
 
 sgdisk -ge $TMP_DISK
 sgdisk -v $TMP_DISK
 
-# Formatting
 LOOPDEV=$(losetup -P --show -f $TMP_DISK)
-CONFIG_PART=$(sgdisk -p $LOOPDEV | grep "config" | tail -n 1 | tr -s ' ' | cut -d ' ' -f 2)
-mkfs.fat ${LOOPDEV}p${CONFIG_PART}
+	CONFIG_PART=$(sgdisk -p $LOOPDEV | grep "config" | tail -n 1 | tr -s ' ' | cut -d ' ' -f 2)
+	BOOT_PART=$(sgdisk -p $LOOPDEV | grep "boot" | tail -n 1 | tr -s ' ' | cut -d ' ' -f 2)
+	ROOT_PART=$(sgdisk -p $LOOPDEV | grep "rootfs" | tail -n 1 | tr -s ' ' | cut -d ' ' -f 2)
+
+	# Formatting
+	mkfs.fat ${LOOPDEV}p${CONFIG_PART}
+
+	# Определяем название одноплатнка
+	mount ${LOOPDEV}p${ROOT_PART} /mnt
+		BOARD=$(cat /mnt/etc/hostname)
+		echo $BOARD
+	umount /mnt
+
+	# Изменяем раздел загрузик в U-Boot
+	case $BOARD in
+		orangepi3b)
+			mount ${LOOPDEV}p${BOOT_PART} /mnt
+				sed -i "s/rootdev=UUID=.*/rootdev=\/dev\/disk\/by-partuuid\/$(blkid -s PARTUUID -o value ${LOOPDEV}p${ROOT_PART})/" /mnt/orangepiEnv.txt
+				sed -i "s/if test \"\${devtype}\".*/setenv partuuid \"$(blkid -s PARTUUID -o value ${LOOPDEV}p${BOOT_PART})\"/" /mnt/boot.cmd
+				sed -i "/# default values/a setenv devnum \"0:2\"" /mnt/boot.cmd
+				mkimage -A arm -O linux -T script -C none -a 0 -e 0 -d /mnt/boot.cmd /mnt/boot.scr
+			umount /mnt
+		;;
+	esac
 losetup -d $LOOPDEV
 
 # Replace the original img image

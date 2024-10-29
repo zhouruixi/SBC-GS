@@ -36,7 +36,7 @@ apt install -y git cmake dkms build-essential meson
 ## 
 [ -d /home/radxa/SourceCode ] || mkdir -p /home/radxa/SourceCode
 cd /home/radxa/SourceCode
-if false; then 
+
 # Installing/Remove the required package depending on the board
 case $BOARD in
 	radxa-zero3)
@@ -204,8 +204,8 @@ pushd SBC-GS/gs
 popd
 
 # install useful packages
-apt -y install lrzsz net-tools socat netcat exfatprogs ifstat fbi minicom bridge-utils
-fi
+apt -y install lrzsz net-tools socat netcat exfatprogs ifstat fbi minicom bridge-utils console-setup psmisc ethtool drm-info libdrm-tests proxychains4
+
 case $BOARD in
 	radxa-zero3)
 		# enable services
