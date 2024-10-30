@@ -44,7 +44,9 @@ case $BOARD in
 		dpkg -l | grep -q "linux-image-5.10.160-26-rk356x" && apt purge -y linux-image-5.10.160-26-rk356x linux-headers-5.10.160-26-rk356x
 	;;
 	orangepi3b)
-		dpkg -i /opt/linux-headers-legacy-rockchip-rk356x_1.0.6_arm64.deb
+		if [ -z $(dpkg -l | grep 'linux-headers-legacy-rockchip-rk356x') ];then
+			dpkg -i /opt/linux-headers-legacy-rockchip-rk356x_1.0.6_arm64.deb
+		fi
 	;;
 esac
 
@@ -107,7 +109,7 @@ else
 fi
 
 # 8731bu
-DRIVE_NAME="8731bu"
+DRIVE_NAME="8733bu"
 if [ $(find /lib/modules -name ${DRIVE_NAME}* |  wc -l) == 0 ];then
 	git clone --depth=1 https://github.com/libc0607/rtl8733bu-20230626.git
 	pushd rtl8733bu-20230626
@@ -204,8 +206,9 @@ pushd SBC-GS/gs
 popd
 
 # install useful packages
-apt -y install lrzsz net-tools socat netcat exfatprogs ifstat fbi minicom bridge-utils console-setup psmisc ethtool drm-info libdrm-tests proxychains4
+DEBIAN_FRONTEND=noninteractive apt -y install lrzsz net-tools socat netcat exfatprogs ifstat fbi minicom bridge-utils console-setup psmisc ethtool drm-info libdrm-tests proxychains4
 
+# disable services
 case $BOARD in
 	radxa-zero3)
 		# enable services
