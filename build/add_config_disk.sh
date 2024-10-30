@@ -115,19 +115,19 @@ LOOPDEV=$(losetup -P --show -f $TMP_DISK)
 	# Formatting
 	mkfs.fat ${LOOPDEV}p${CONFIG_PART}
 
-	# Определяем название одноплатнка
+	# We define the name of the single-board computer
 	mount ${LOOPDEV}p${ROOT_PART} /mnt
 		BOARD=$(cat /mnt/etc/hostname)
 		echo $BOARD
 	umount /mnt
 
-	# Изменяем раздел загрузик в U-Boot
+	# Changing the partition boot in U-Boot
 	case $BOARD in
 		orangepi3b)
 			mount ${LOOPDEV}p${BOOT_PART} /mnt
 				sed -i "s/rootdev=UUID=.*/rootdev=\/dev\/disk\/by-partuuid\/$(blkid -s PARTUUID -o value ${LOOPDEV}p${ROOT_PART})/" /mnt/orangepiEnv.txt
 				sed -i "s/if test \"\${devtype}\".*/setenv partuuid \"$(blkid -s PARTUUID -o value ${LOOPDEV}p${BOOT_PART})\"/" /mnt/boot.cmd
-				sed -i "/# default values/a setenv devnum \"0:2\"" /mnt/boot.cmd
+				sed -i "/# default values/a setenv devnum \"\${devnum}:$(($ROOT_PART-1))\"" /mnt/boot.cmd
 				mkimage -A arm -O linux -T script -C none -a 0 -e 0 -d /mnt/boot.cmd /mnt/boot.scr
 			umount /mnt
 		;;
