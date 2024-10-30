@@ -8,7 +8,7 @@ TMP_DISK="newImage.img"
 
 # Protection against duplicate creation
 if $(sgdisk -p $1 | grep -q config);then
-	echo "Error: The config section already exists"
+	echo "Warning: The config section already exists"
 	exit 0
 fi
 
