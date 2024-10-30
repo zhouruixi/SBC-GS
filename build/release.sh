@@ -181,7 +181,7 @@ sgdisk -v $IMAGE > /dev/null
 echo "Image shrunked from ${TOTAL_BLOCKS} to ${TOTAL_BLOCKS_SHRINKED}." 
 
 # compression image and rename xz file
-NEW_NAME="openipc_sbcgc_${BOARD}_${BUILD_DATE}_${VERSION}.img"
+NEW_NAME="openipc_sbcgs_${BOARD}_${BUILD_DATE}_${VERSION}.img"
 echo_blue "Compression image and rename xz file $NEW_NAME"
 mv $IMAGE $NEW_NAME
 xz -T0 $NEW_NAME
