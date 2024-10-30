@@ -166,15 +166,14 @@ resize2fs -M $ROOT_DEV
 TOTAL_BLOCKS_SHRINKED=$(sudo tune2fs -l "$ROOT_DEV" | grep '^Block count:' | tr -s ' ' | cut -d ' ' -f 3)
 sync $ROOT_DEV
 NEW_SIZE=$(( $START_SECTOR * $SECTOR_SIZE + $TARGET_BLOCKS * $BLOCK_SIZE ))
+parted -s -a minimal "$LOOPDEV" rm $ROOT_PART >/dev/null
+parted -s "$LOOPDEV" unit B mkpart primary $(($START_SECTOR*$SECTOR_SIZE)) $NEW_SIZE >/dev/null
 END_SECTOR=$(sgdisk -i $ROOT_PART $LOOPDEV | grep "Last sector:" | cut -d ' ' -f 3)
 FIRST_LBA=$(sfdisk -d $LOOPDEV | grep 'first-lba:' | tr -d ' ' | cut -d ':' -f 2)
 FINAL_SIZE=$(( ($END_SECTOR + $FIRST_LBA) * $SECTOR_SIZE ))
-parted -s -a minimal "$LOOPDEV" rm $ROOT_PART >/dev/null
-parted -s "$LOOPDEV" unit B mkpart primary $(($START_SECTOR*$SECTOR_SIZE)) $NEW_SIZE >/dev/null
 
 losetup -d $LOOPDEV
 truncate --size=$FINAL_SIZE $IMAGE > /dev/null
-echo "last-lba: $END_SECTOR" | sfdisk $IMAGE >/dev/null
 sgdisk -ge $IMAGE > /dev/null
 sgdisk -v $IMAGE > /dev/null
 
