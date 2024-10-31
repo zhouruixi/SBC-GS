@@ -184,10 +184,10 @@ echo "Image shrunked from ${TOTAL_BLOCKS} to ${TOTAL_BLOCKS_SHRINKED}."
 
 # compression image and rename xz file
 NEW_NAME="openipc_sbcgs_${BOARD}_${BUILD_DATE}_${VERSION}.img"
-echo_blue "Compression image and rename xz file $NEW_NAME"
+echo_blue "Compression image and rename xz file '$NEW_NAME'"
 mv $IMAGE $NEW_NAME
 xz -fv -T0 $NEW_NAME
 
-echo_green "Finish"
+echo_green "$NEW_NAME"
 
 exit 0
