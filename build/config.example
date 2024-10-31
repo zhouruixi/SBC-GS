@@ -9,3 +9,4 @@ IMAGE_URL="https://github.com/zhouruixi/rbuild/releases/download/image/radxa-zer
 #IMAGE_URL=radxa-zero3_debian_bullseye_cli.img
 
 ROOTFS="rootfs"
+set +x
