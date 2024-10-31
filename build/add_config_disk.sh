@@ -118,7 +118,7 @@ LOOPDEV=$(losetup -P --show -f $TMP_DISK)
 	# We define the name of the single-board computer
 	mount ${LOOPDEV}p${ROOT_PART} /mnt
 		BOARD=$(cat /mnt/etc/hostname)
-		echo $BOARD
+		echo "UUID=$(blkid -s UUID -o value ${LOOPDEV}p${CONFIG_PART})  /config vfat defaults,x-systemd.automount 0 2" >> /mnt/etc/fstab
 	umount /mnt
 
 	# Changing the partition boot in U-Boot
