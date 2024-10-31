@@ -4,5 +4,8 @@ IMAGE_URL="https://github.com/radxa-build/radxa-zero3/releases/download/b6/radxa
 IMAGE_URL="https://github.com/zhouruixi/rbuild/releases/download/image/radxa-zero-3_debian_bullseye_cli.img.xz"
 
 # Example file
-#IMAGE_URL="/root/Orangepi3b_1.0.6_debian_bullseye_server_linux5.10.160.7z"
+IMAGE_URL="/root/Orangepi3b_1.0.6_debian_bullseye_server_linux5.10.160.7z"
+#IMAGE_URL=/root/Orangepi3b_1.0.6_debian_bullseye_server_linux5.10.160.img
+#IMAGE_URL=radxa-zero3_debian_bullseye_cli.img
+
 ROOTFS="rootfs"
