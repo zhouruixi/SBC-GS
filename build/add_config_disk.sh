@@ -128,7 +128,7 @@ LOOPDEV=$(losetup -P --show -f $TMP_DISK)
 				sed -i "s/rootdev=UUID=.*/rootdev=\/dev\/disk\/by-partuuid\/$(blkid -s PARTUUID -o value ${LOOPDEV}p${ROOT_PART})/" /mnt/orangepiEnv.txt
 				sed -i "s/if test \"\${devtype}\".*/setenv partuuid \"$(blkid -s PARTUUID -o value ${LOOPDEV}p${BOOT_PART})\"/" /mnt/boot.cmd
 				sed -i "/# default values/a setenv devnum \"\${devnum}:$(($ROOT_PART-1))\"" /mnt/boot.cmd
-				mkimage -A arm -O linux -T script -C none -a 0 -e 0 -d /mnt/boot.cmd /mnt/boot.scr
+				mkimage -A arm -O linux -T script -C none -a 0 -e 0 -d /mnt/boot.cmd /mnt/boot.scr >/dev/null
 			umount /mnt
 		;;
 	esac
