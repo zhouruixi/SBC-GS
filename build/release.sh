@@ -179,7 +179,7 @@ truncate --size=$FINAL_SIZE $IMAGE > /dev/null
 sgdisk -ge $IMAGE > /dev/null
 sgdisk -v $IMAGE > /dev/null
 
-echo "Image shrunked from ${TOTAL_BLOCKS} to ${TOTAL_BLOCKS_SHRINKED}." 
+echo "Image shrunked from ${TOTAL_BLOCKS} to ${TOTAL_BLOCKS_SHRINKED}."
 
 # compression image and rename xz file
 NEW_NAME="openipc_sbcgs_${BOARD}_${BUILD_DATE}_${VERSION}.img"
