@@ -2,4 +2,4 @@ rootfs/
 *.img
 *.xz
 *.7z
-./config
+build/config
