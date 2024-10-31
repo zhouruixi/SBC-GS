@@ -7,6 +7,7 @@ echo_blue()  { printf "\033[1;34m$*\033[m\n"; }
 
 cd "$(dirname "$0")"
 
+[ -f config ] || cp config.example config
 source config
 
 # Checking free space
