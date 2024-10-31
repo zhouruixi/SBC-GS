@@ -44,15 +44,15 @@ fi
 
 echo "Create a new disk"
 
-# Копируем сектора с загрузчиками
+# Copy sectors and bootloader
 skip_mb=$(($start_sector/$mbToSector)) # We do not read empty blocks at the beginning of the img image, in MB
 dd if=$1 of=$TMP_DISK bs=1M count=$skip_mb
 
-# Добавить 16М + образ
+# Add 16M + images
 seek_mb=$(($skip_mb + $SIZE_DISK)) # Seek +16М
 dd if=$1 of=$TMP_DISK bs=1M skip=$skip_mb seek=$seek_mb status=progress
 
-# Добавить в конец длинну, равную first_lba (нужно для sgdisk -ge)
+# Add in end length equals first_lba (need for sgdisk -ge)
 size_img=$(($(du -b "$TMP_DISK" | awk '{print $1}')/$sector_size))
 r34=$(($size_img - $full_lba))
 if [ $r34 -ne $gptReserveSizeSector ];then
