@@ -31,7 +31,7 @@ fi
 # Update system to date
 apt update
 DEBIAN_FRONTEND=noninteractive apt dist-upgrade -y --allow-downgrades
-apt install -y git cmake dkms build-essential meson gdisk
+apt install -y git cmake dkms build-essential meson gdisk samba
 
 ## 
 [ -d /home/radxa/SourceCode ] || mkdir -p /home/radxa/SourceCode
