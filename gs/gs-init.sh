@@ -40,16 +40,24 @@ if [ "${REC_Dir}" != "$(grep -oP '(?<=^/dev/mmcblk1p4\t).*?(?=\t)' /etc/fstab)" 
 	echo -e "${os_dev}p4\t${REC_Dir}\texfat\tdefaults\t0\t0" >> /etc/fstab
 fi
 
-# Enable dtbo
-# set max resolution to 4k
-dtc -I dts -O dtb -o /boot/dtbo/rk3566-hdmi-max-resolution-4k.dtbo /home/radxa/gs/rk3566-hdmi-max-resolution-4k.dts
-# enbale USB OTG role switch
-dtc -I dts -O dtb -o /boot/dtbo/rk3566-dwc3-otg-role-switch.dtbo /home/radxa/gs/rk3566-dwc3-otg-role-switch.dts
-dtbo_enable_array=($dtbo_enable_list)
-for dtbo in "${dtbo_enable_array[@]}"; do
-	mv /boot/dtbo/rk3568-${dtbo}.dtbo.disabled /boot/dtbo/rk3568-${dtbo}.dtbo
-done
-u-boot-update
+case $BOARD in
+	radxa-zero3)
+                # Enable dtbo
+                [ -d /boot/dtbo ] || mkdir -p /boot/dtbo
+                # set max resolution to 4k
+                dtc -I dts -O dtb -o /boot/dtbo/rk3566-hdmi-max-resolution-4k.dtbo /home/radxa/gs/rk3566-hdmi-max-resolution-4k.dts
+                # enbale USB OTG role switch
+                dtc -I dts -O dtb -o /boot/dtbo/rk3566-dwc3-otg-role-switch.dtbo /home/radxa/gs/rk3566-dwc3-otg-role-switch.dts
+                dtbo_enable_array=($dtbo_enable_list)
+                for dtbo in "${dtbo_enable_array[@]}"; do
+                        mv /boot/dtbo/rk3568-${dtbo}.dtbo.disabled /boot/dtbo/rk3568-${dtbo}.dtbo
+                done
+                u-boot-update
+	;;
+	orangepi3b)
+		echo ""
+	;;
+esac
 
 # Add eth0 network configuration
 [ -f /etc/systemd/network/eth0.network ] || cat > /etc/systemd/network/eth0.network << EOF
