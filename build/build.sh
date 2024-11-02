@@ -210,10 +210,13 @@ popd
 # install useful packages
 DEBIAN_FRONTEND=noninteractive apt -y install lrzsz net-tools socat netcat exfatprogs ifstat fbi minicom bridge-utils console-setup psmisc ethtool drm-info libdrm-tests proxychains4
 
-# disable services
 case $BOARD in
 	radxa-zero3)
+		# disable services
+		sed -i '/disable_service systemd-networkd/a disable_service dnsmasq' /config/before.txt
+
 		# enable services
+		sed -i "s/disable_service systemd-networkd/# disable_service systemd-networkd/" /config/before.txt
 		sed -i "s/disable_service ssh/# disable_service ssh/" /config/before.txt
 		sed -i "s/disable_service nmbd/# disable_service smbd/" /config/before.txt
 		sed -i "s/disable_service smbd/# disable_service nmbd/" /config/before.txt
@@ -222,8 +225,11 @@ case $BOARD in
 		apt purge -y cloud-initramfs-growroot
 		sed -i "s/resize_root/# resize_root/" /config/before.txt
 
-		# disable services
-		sed -i '/disable_service systemd-networkd/a disable_service dnsmasq' /config/before.txt
+		# umanage NICs from NetwrkManager
+		cat > /etc/NetworkManager/conf.d/00-gs-unmanaged.conf << EOF
+		[keyfile]
+		unmanaged-devices=interface-name:eth0;interface-name:br0;interface-name:usb0;interface-name:dummy0;interface-name:radxa0;interface-name:wlx*
+EOF
 	;;
 	orangepi3b)
 		# Added for compatibility with RadxaZero3
