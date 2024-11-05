@@ -11,6 +11,21 @@ BOARD=$(cat /etc/hostname)
 
 case $BOARD in
 	radxa-zero3)
+		# kernel cmdline configuration
+		if [[ ${system_wide_screen_mode} == "yes" && ! grep -q "video=HDMI-A-1:" /etc/kernel/cmdline ]]; then
+			if [ -z "${screen_mode}" ];then
+				echo "waring: screen_mode is not setting in gs.conf"
+			else
+				sed -i "1s/$/ video=HDMI-A-1:${screen_mode}/" /etc/kernel/cmdline
+				need_u_boot_update=1
+				need_reboot=1
+			fi
+		elif [[ ${system_wide_screen_mode} == "no" && grep -q "video=HDMI-A-1:" /etc/kernel/cmdline ]]; then
+			sed -i 's/ video=HDMI-A-1:[^ ]*//' /etc/kernel/cmdline
+		else
+			echo "error: system_wide_screen_mode must yes or no"
+		fi
+
 		# dtbo configuration
 		if [[ "$enable_external_antenna" == "yes" && ! -f /boot/dtbo/radxa-zero3-external-antenna.dtbo && -d /sys/class/net/wlan0 ]]; then
 			mv /boot/dtbo/radxa-zero3-external-antenna.dtbo.disabled /boot/dtbo/radxa-zero3-external-antenna.dtbo
@@ -47,6 +62,18 @@ fi
 # some configuration need reboot to take effect
 [ "$need_u_boot_update" == "1" ] && u-boot-update
 [ "$need_reboot" == "1" ] && reboot
+
+# RTC configuration
+if [ "$use_external_rtc" == "yes" ]; then
+	if [ -c /dev/i2c-4 ]; then
+		modprobe i2c-dev
+		echo ds3231 0x68 >  /sys/class/i2c-adapter/i2c-4/new_device
+		[ -c /dev/rtc1 ] && hwclock -s -f /dev/rtc1 || echo "no ds3231 found"
+	else
+		echo "i2c-4 is not enabled"
+	fi
+
+fi
 
 # Update eth0 configuration
 if [[ -f /etc/systemd/network/eth0.network && -n "$eth0_fixed_ip" && -n "$eth0_fixed_ip2" ]]; then
