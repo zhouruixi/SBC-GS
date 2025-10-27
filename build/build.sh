@@ -241,7 +241,7 @@ EOF
 # install useful packages
 DEBIAN_FRONTEND=noninteractive apt -y install lrzsz net-tools socat netcat exfatprogs ifstat fbi picocom bridge-utils \
        console-setup psmisc ethtool drm-info libdrm-tests proxychains4 chrony gpsd gpsd-clients tcpdump iptables-persistent \
-       dosfstools sshpass fake-hwclock tree evtest python3-dev tftpd-hpa isc-dhcp-client joystick
+       dosfstools sshpass fake-hwclock tree evtest python3-dev tftpd-hpa isc-dhcp-client joystick irqbalance ifupdown
 pip install evdev dotenv
 
 # snander
