@@ -172,9 +172,10 @@ resize2fs -M $ROOT_DEV
 TOTAL_BLOCKS_SHRINKED=$(sudo tune2fs -l "$ROOT_DEV" | grep '^Block count:' | tr -s ' ' | cut -d ' ' -f 3)
 sync $ROOT_DEV
 NEW_SIZE=$(( $START_SECTOR * $SECTOR_SIZE + $TARGET_BLOCKS * $BLOCK_SIZE ))
+NEW_SIZE_MiB=$(( ($NEW_SIZE + 1048575) / 1048576 ))
 cat << EOF | parted ---pretend-input-tty $LOOPDEV > /dev/null 2>&1
 resizepart $ROOT_PART 
-${NEW_SIZE}B
+${NEW_SIZE_MiB}MiB
 yes
 EOF
 END_SECTOR=$(sgdisk -i $ROOT_PART $LOOPDEV | grep "Last sector:" | cut -d ' ' -f 3)
