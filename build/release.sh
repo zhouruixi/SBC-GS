@@ -88,6 +88,8 @@ LOOPDEV=$(losetup -P --show -f $IMAGE)
 # Base image build by rsdk have no rootfs flag
 ROOT_PART="3"
 ROOT_DEV=${LOOPDEV}p${ROOT_PART}
+OVERLAY_PART="4"
+OVERLAY_DEV=${LOOPDEV}p${OVERLAY_PART}
 
 # move second/backup GPT header to end of disk
 sgdisk -ge $LOOPDEV
@@ -178,7 +180,14 @@ resizepart $ROOT_PART
 ${NEW_SIZE_MiB}MiB
 yes
 EOF
-END_SECTOR=$(sgdisk -i $ROOT_PART $LOOPDEV | grep "Last sector:" | cut -d ' ' -f 3)
+
+# Add overlayfs upper writeable partition
+OVERLAY_START=$(parted -m $LOOPDEV unit MiB print | tail -n 1 | cut -d: -f3 | tr -d 'MiB')
+parted $LOOPDEV --script mkpart overlay ext4 ${OVERLAY_START}MiB $(( $OVERLAY_START + 100 ))MiB
+partprobe $LOOPDEV
+mkfs.ext4 -L overlay -E lazy_itable_init=0,lazy_journal_init=0 $OVERLAY_DEV
+
+END_SECTOR=$(sgdisk -i $OVERLAY_PART $LOOPDEV | grep "Last sector:" | cut -d ' ' -f 3)
 FINAL_SIZE=$(( ($END_SECTOR + 34) * $SECTOR_SIZE ))
 
 losetup -d $LOOPDEV

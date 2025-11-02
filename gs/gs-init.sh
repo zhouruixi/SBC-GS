@@ -20,34 +20,38 @@ EOF
 
 BOARD=$(cat /etc/hostname)
 
-# Create a partition(exfat) to save record videos
+# Expand overlay partition size and create vides partition(exfat)
 [ -d $rec_dir ] || mkdir -p $rec_dir
 os_dev=$(blkid | grep rootfs | grep -oP "/dev/.+(?=p\d+)") || true
-if [ ! -b ${os_dev}p4 ]; then
-        sgdisk -ge $os_dev
-        root_partirion_size=$(parted -s $os_dev unit MiB p | grep -oP "\d+(?=MiB\s*ext4)")
-        root_partirion_size_new=$(( root_partirion_size + $rootfs_reserved_space ))
-        cat << EOF | parted ---pretend-input-tty $os_dev > /dev/null 2>&1
-resizepart 3 ${root_partirion_size_new}MiB
+if [ ! -b ${os_dev}p5 ]; then
+	sgdisk -ge $os_dev
+	overlay_partition_start=$(parted -m $os_dev unit MiB print | tail -n 1 | cut -d: -f3 | tr -d 'MiB')
+	overlay_partition_end=$(( $overlay_partition_start + $rootfs_reserved_space ))
+	cat << EOF | parted ---pretend-input-tty $os_dev > /dev/null 2>&1
+resizepart 4 ${overlay_partition_end}MiB
 yes
 EOF
-        resize2fs ${os_dev}p3
-        root_partirion_end=$(parted -s $os_dev p | grep ext4 | tr -s ' ' | cut -d ' ' -f 4)
-        parted -s $os_dev mkpart videos fat32 ${root_partirion_end} 100%
-        mkfs.exfat ${os_dev}p4
+	resize2fs ${os_dev}p4
+	videos_partition_start=$(parted -m $os_dev unit MiB print | tail -n 1 | cut -d: -f3 | tr -d 'MiB')
+	parted -s $os_dev mkpart videos fat32 ${videos_partition_start}MiB 100%
+	mkfs.exfat -L videos ${os_dev}p5
 fi
+
+# mount overlay lower to rw on init boot
+mount -o remount,rw /media/root-ro
+
 # mount /dev/disk/by-partlabel/videos $rec_dir
-if ! grep -Pq "^/dev/[^\t]*\t${rec_dir}\texfat\tdefaults\,nofail\t0\t0" /etc/fstab; then
-	echo -e "${os_dev}p4\t${rec_dir}\texfat\tdefaults,nofail\t0\t0" >> /etc/fstab
+if ! grep -Pq "^/dev/[^\s]*\s*${rec_dir}\s*exfat\s*defaults\,nofail\s*0\s*0" /media/root-ro/etc/fstab; then
+	echo -e "${os_dev}p5 ${rec_dir} exfat defaults,nofail 0 0" >> /media/root-ro/etc/fstab
 fi
 
 # Enable dtbo
 # set max resolution to 4k, disabled by default
-dtc -I dts -O dtb -o /boot/dtbo/rk3566-hdmi-max-resolution-4k.dtbo.disabled /gs/rk3566-hdmi-max-resolution-4k.dts
+dtc -I dts -O dtb -o /media/root-ro/boot/dtbo/rk3566-hdmi-max-resolution-4k.dtbo.disabled /gs/rk3566-hdmi-max-resolution-4k.dts
 # enbale USB OTG role switch
-dtc -I dts -O dtb -o /boot/dtbo/rk3566-dwc3-otg-role-switch.dtbo /gs/rk3566-dwc3-otg-role-switch.dts
+dtc -I dts -O dtb -o /media/root-ro/boot/dtbo/rk3566-dwc3-otg-role-switch.dtbo /gs/rk3566-dwc3-otg-role-switch.dts
 # INA226 device, disabled by default
-dtc -I dts -O dtb -o /boot/dtbo/rk3566-ina226-overlay.dtbo.disabled /gs/rk3566-ina226-overlay.dts
+dtc -I dts -O dtb -o /media/root-ro/boot/dtbo/rk3566-ina226-overlay.dtbo.disabled /gs/rk3566-ina226-overlay.dts
 
 
 # Add br0 network configuration

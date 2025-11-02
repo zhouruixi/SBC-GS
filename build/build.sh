@@ -355,6 +355,20 @@ EOF
 systemctl enable save-fakehwclock.timer
 echo $(date "+%Y-%m-%d %H:%M:%S") > /etc/fake-hwclock.data
 
+# Install and config overlayroot
+apt install -y busybox-static cryptsetup cryptsetup-bin
+wget "http://ftp.cn.debian.org/debian/pool/main/c/cloud-initramfs-tools/overlayroot_0.18.debian13+deb12u1_all.deb"
+dpkg -i overlayroot_0.18.debian13+deb12u1_all.deb && rm overlayroot_0.18.debian13+deb12u1_all.deb
+echo 'overlayroot="device:dev=LABEL=overlay,timeout=10,recurse=0"' >> /etc/overlayroot.local.conf
+# Add firstboot command
+cat > /usr/local/bin/firstboot << EOF
+#!/bin/sh
+rm -rf /media/root-rw/overlay/*
+echo "Cleanup overlayroot upperdir /media/root-rw/ done."
+echo "reboot now!"
+reboot
+EOF
+chmod +x /usr/local/bin/firstboot
 
 rm -rf /root/SourceCode
 rm /etc/resolv.conf

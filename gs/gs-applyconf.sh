@@ -39,9 +39,9 @@ fi
 # load gs.conf if not loded
 [ -z "${wifi_mode+defined}" ] && source /etc/gs.conf
 
-need_u_boot_update=0
 need_reboot=0
 need_restart_services=""
+cmds_lower_rootfs_rw=()
 
 ## kernel cmdline configuration
 [ -f /etc/kernel/cmdline.bak ] || cp /etc/kernel/cmdline /etc/kernel/cmdline.bak
@@ -56,52 +56,35 @@ if [ "$system_wide_screen_mode" == "yes" ]; then
 fi
 # update kernel cmdline
 if [ "$kernel_cmdline_config" != "$kernel_cmdline_now" ]; then
-	echo "$kernel_cmdline_config" > /etc/kernel/cmdline
-	need_u_boot_update=1
-	need_reboot=1
+	cmds_lower_rootfs_rw+=("[ -f /etc/kernel/cmdline.bak ] || cp /etc/kernel/cmdline /etc/kernel/cmdline.bak")
+	cmds_lower_rootfs_rw+=("echo '$kernel_cmdline_config' > /media/root-ro/etc/kernel/cmdline")
 fi
 
 ## dtbo configuration
 # set max resolution to 4k
 if [[ "$max_resolution_4k" == "yes" && -f /boot/dtbo/rk3566-hdmi-max-resolution-4k.dtbo.disabled ]]; then
-        mv /boot/dtbo/rk3566-hdmi-max-resolution-4k.dtbo.disabled /boot/dtbo/rk3566-hdmi-max-resolution-4k.dtbo
-        need_u_boot_update=1
-        need_reboot=1
+	cmds_lower_rootfs_rw+=("mv /boot/dtbo/rk3566-hdmi-max-resolution-4k.dtbo.disabled /boot/dtbo/rk3566-hdmi-max-resolution-4k.dtbo")
 elif [[ "$max_resolution_4k" == "no" && -f /boot/dtbo/rk3566-hdmi-max-resolution-4k.dtbo ]]; then
-        mv /boot/dtbo/rk3566-hdmi-max-resolution-4k.dtbo /boot/dtbo/rk3566-hdmi-max-resolution-4k.dtbo.disabled
-        need_u_boot_update=1
-        need_reboot=1
+	cmds_lower_rootfs_rw+=("mv /boot/dtbo/rk3566-hdmi-max-resolution-4k.dtbo /boot/dtbo/rk3566-hdmi-max-resolution-4k.dtbo.disabled")
 fi
 # disable integrated wifi of radxa zero 3W
 if [[ "$disable_integrated_wifi" == "yes" && -f /boot/dtbo/radxa-zero3-disabled-wireless.dtbo.disabled ]]; then
-	mv /boot/dtbo/radxa-zero3-disabled-wireless.dtbo.disabled /boot/dtbo/radxa-zero3-disabled-wireless.dtbo
-	need_u_boot_update=1
-	need_reboot=1
+	cmds_lower_rootfs_rw+=("mv /boot/dtbo/radxa-zero3-disabled-wireless.dtbo.disabled /boot/dtbo/radxa-zero3-disabled-wireless.dtbo")
 elif [[ "$disable_integrated_wifi" == "no" && -f /boot/dtbo/radxa-zero3-disabled-wireless.dtbo ]]; then
-	mv /boot/dtbo/radxa-zero3-disabled-wireless.dtbo /boot/dtbo/radxa-zero3-disabled-wireless.dtbo.disabled
-	need_u_boot_update=1
-	need_reboot=1
+	cmds_lower_rootfs_rw+=("mv /boot/dtbo/radxa-zero3-disabled-wireless.dtbo /boot/dtbo/radxa-zero3-disabled-wireless.dtbo.disabled")
 
 fi
 # enable external antenna of radxa zero 3W
 if [[ "$enable_external_antenna" == "yes" && -f /boot/dtbo/radxa-zero3-external-antenna.dtbo.disabled && -d /sys/class/net/wifi0 ]]; then
-	mv /boot/dtbo/radxa-zero3-external-antenna.dtbo.disabled /boot/dtbo/radxa-zero3-external-antenna.dtbo
-	need_u_boot_update=1
-	need_reboot=1
+	cmds_lower_rootfs_rw+=("mv /boot/dtbo/radxa-zero3-external-antenna.dtbo.disabled /boot/dtbo/radxa-zero3-external-antenna.dtbo")
 elif [[ "$enable_external_antenna" == "no" && -f /boot/dtbo/radxa-zero3-external-antenna.dtbo && -d /sys/class/net/wifi0 ]] ; then
-	mv /boot/dtbo/radxa-zero3-external-antenna.dtbo /boot/dtbo/radxa-zero3-external-antenna.dtbo.disabled
-	need_u_boot_update=1
-	need_reboot=1
+	cmds_lower_rootfs_rw+=("mv /boot/dtbo/radxa-zero3-external-antenna.dtbo /boot/dtbo/radxa-zero3-external-antenna.dtbo.disabled")
 fi
 # INA226 device
 if [[ "$ina226_kernel_driver" == "yes" && -f /boot/dtbo/rk3566-ina226-overlay.dtbo.disabled ]]; then
-        mv /boot/dtbo/rk3566-ina226-overlay.dtbo.disabled /boot/dtbo/rk3566-ina226-overlay.dtbo
-        need_u_boot_update=1
-        need_reboot=1
+	cmds_lower_rootfs_rw+=("mv /boot/dtbo/rk3566-ina226-overlay.dtbo.disabled /boot/dtbo/rk3566-ina226-overlay.dtbo")
 elif [[ "$ina226_kernel_driver" == "no" && -f /boot/dtbo/rk3566-ina226-overlay.dtbo ]]; then
-        mv /boot/dtbo/rk3566-ina226-overlay.dtbo /boot/dtbo/rk3566-ina226-overlay.dtbo.disabled
-        need_u_boot_update=1
-        need_reboot=1
+	cmds_lower_rootfs_rw+=("mv /boot/dtbo/rk3566-ina226-overlay.dtbo /boot/dtbo/rk3566-ina226-overlay.dtbo.disabled")
 fi
 # dtbo enable or disable
 if [ -n "$dtbo_enable_list" ]; then
@@ -113,26 +96,24 @@ if [ -n "$dtbo_enable_list" ]; then
 	if [ -n "$dtbo_need_enable" ]; then
 		for dtboe in $dtbo_need_enable; do
 			if [ -f /boot/dtbo/rk3568-${dtboe}.dtbo.disabled ]; then
-				mv /boot/dtbo/rk3568-${dtboe}.dtbo.disabled /boot/dtbo/rk3568-${dtboe}.dtbo
-				need_u_boot_update=1
-				need_reboot=1
+				cmds_lower_rootfs_rw+=("mv /boot/dtbo/rk3568-${dtboe}.dtbo.disabled /boot/dtbo/rk3568-${dtboe}.dtbo")
 			fi
 		done
 	fi
 	# disable dtbo
 	if [ -n "$dtbo_need_disable" ]; then
 		for dtbod in $dtbo_need_disable; do
-			mv /boot/dtbo/rk3568-${dtbod}.dtbo /boot/dtbo/rk3568-${dtbod}.dtbo.disabled
+			cmds_lower_rootfs_rw+=("mv /boot/dtbo/rk3568-${dtbod}.dtbo /boot/dtbo/rk3568-${dtbod}.dtbo.disabled")
 		done
-		need_u_boot_update=1
-		need_reboot=1
 	fi
 fi
 
 ## Update rec_dir in fstab
 [ -d $rec_dir ] || mkdir -p $rec_dir
-if ! grep -Pq "^/dev/[^\t]*\t${rec_dir}\texfat\tdefaults\,nofail\t0\t0" /etc/fstab; then
-	sed -i "s#^\(/dev/[^\t]*\t\)[^\t]*#\1${rec_dir}#" /etc/fstab
+if ! grep -Pq "^/dev/[^\s]*\s*${rec_dir}\s*exfat\s*defaults\,nofail\s*0\s*0" /media/root-ro/etc/fstab; then
+	echo "[info]: Update rec_dir in fstab and need reboot"
+	mount -o remount,rw /media/root-ro
+	sed -i "s#^\(/dev/[^\s]*\s*\)[^\s]*#\1${rec_dir}#" /media/root-ro/etc/fstab
 	need_reboot=1
 fi
 
@@ -212,6 +193,14 @@ echo "radxa0 usb gadget network configure done"
 grep -q "$rec_dir" /etc/samba/smb.conf || ( sed -i "/\[Videos\]/{n;s|.*|   ${rec_dir}|;}" /etc/samba/smb.conf && need_restart_services="$need_restart_services smbd nmbd")
 
 # some configuration need reboot to take effect
-[ "$need_u_boot_update" == "1" ] && u-boot-update
+if [ "${#cmds_lower_rootfs_rw[@]}" -ne 0 ]; then
+	mount -o remount,rw /media/root-ro
+	for cmd in "${cmds_lower_rootfs_rw[@]}"; do
+		echo "[info]: Running in lower rootfs rw: $cmd"
+		chroot /media/root-ro /bin/bash -c "$cmd"
+	done
+	chroot /media/root-ro /usr/sbin/u-boot-update
+	reboot
+fi
 [ "$need_reboot" == "1" ] && reboot
 [ -n "$need_restart_services" ] && systemctl restart $need_restart_services
